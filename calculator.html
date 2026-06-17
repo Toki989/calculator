@@ -6,25 +6,25 @@
   <title>Calculator</title>
   <style>
     :root {
-      --bg: #d8d8d8;
-      --panel: #efefef;
-      --panel-border: #111111;
-      --display-bg: #f8f8f8;
-      --display-border: #111111;
-      --text: #101010;
-      --muted: #5f5f5f;
-      --digit-bg: #c9c9c9;
-      --digit-hover: #bbbbbb;
-      --operator-bg: #f7f7f7;
-      --operator-hover: #e2e2e2;
-      --equals-bg: #111111;
-      --equals-hover: #2b2b2b;
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --panel-border: #000000;
+      --display-bg: #ffffff;
+      --display-border: #000000;
+      --text: #000000;
+      --muted: #111111;
+      --digit-bg: #ffffff;
+      --digit-hover: #f1f1f1;
+      --operator-bg: #ffffff;
+      --operator-hover: #f1f1f1;
+      --equals-bg: #000000;
+      --equals-hover: #1a1a1a;
       --equals-text: #ffffff;
-      --clear-bg: #b2b2b2;
-      --clear-hover: #9f9f9f;
-      --history-bg: #f8f8f8;
-      --history-border: #111111;
-      --shadow: rgba(0, 0, 0, 0.14);
+      --clear-bg: #ffffff;
+      --clear-hover: #f1f1f1;
+      --history-bg: #ffffff;
+      --history-border: #000000;
+      --shadow: rgba(0, 0, 0, 0.2);
     }
 
     * {
@@ -36,7 +36,7 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: linear-gradient(180deg, #eaeaea 0%, var(--bg) 100%);
+      background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
       color: var(--text);
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
     }
@@ -69,7 +69,8 @@
       text-align: right;
       overflow-wrap: anywhere;
       white-space: nowrap;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
     .result {
@@ -78,7 +79,8 @@
       font-size: 2rem;
       font-weight: 700;
       text-align: right;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
       white-space: nowrap;
     }
 
@@ -90,7 +92,7 @@
 
     button {
       appearance: none;
-      border: 1.5px solid #111111;
+      border: 1.5px solid #000000;
       border-radius: 10px;
       min-height: 52px;
       padding: 0.55rem 0.4rem;
@@ -164,16 +166,19 @@
       gap: 6px;
       font-size: 0.9rem;
       min-height: 138px;
-      max-height: 138px;
-      overflow: hidden;
+      max-height: 160px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
     }
 
     .history-list li {
       padding: 6px 8px;
       border-radius: 8px;
-      background: #ededed;
+      background: #ffffff;
       white-space: nowrap;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
     .hint {
@@ -224,6 +229,14 @@
   </main>
 
   <script>
+    const MAX_HISTORY_ITEMS = 10;
+    const DISPLAY_FONT_MAX = 32;
+    const DISPLAY_FONT_MIN = 16;
+    const FORMULA_FONT_MAX = 16;
+    const FORMULA_FONT_MIN = 12;
+    const HISTORY_FONT_MAX = 14;
+    const HISTORY_FONT_MIN = 11;
+
     let firstNumber = '';
     let operator = '';
     let isNewInput = true;
@@ -241,27 +254,69 @@
         size -= 1;
         element.style.fontSize = `${size}px`;
       }
+      element.style.overflowX = element.scrollWidth > element.clientWidth ? 'auto' : 'hidden';
+    }
+
+    function resetTextFit(element, baseSize) {
+      element.style.fontSize = `${baseSize}px`;
+      element.style.overflowX = 'hidden';
+    }
+
+    function formatOperatorSymbol(value) {
+      if (value === '*') return '×';
+      if (value === '/') return '÷';
+      if (value === '+') return '＋';
+      return '－';
+    }
+
+    function formatNumberWithCommas(value) {
+      if (value === 'エラー' || value === '') {
+        return value;
+      }
+
+      const text = String(value);
+      const [integerPart, fractionPart] = text.split('.');
+      const negative = integerPart.startsWith('-');
+      const digits = negative ? integerPart.slice(1) : integerPart;
+      const formattedInteger = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      const head = negative ? `-${formattedInteger}` : formattedInteger;
+      return fractionPart !== undefined ? `${head}.${fractionPart}` : head;
+    }
+
+    function isErrorState() {
+      return currentInput === 'エラー';
+    }
+
+    function resetAfterError() {
+      firstNumber = '';
+      operator = '';
+      isNewInput = true;
+      currentInput = 'エラー';
     }
 
     function render() {
-      display.textContent = currentInput;
+      display.textContent = formatNumberWithCommas(currentInput);
       formula.textContent = firstNumber !== '' && operator
-        ? `${firstNumber} ${operator} ${isNewInput ? '' : currentInput}`
+        ? `${formatNumberWithCommas(firstNumber)} ${formatOperatorSymbol(operator)} ${isNewInput ? '' : formatNumberWithCommas(currentInput)}`
         : firstNumber !== ''
-          ? `${firstNumber} ${operator}`
+          ? `${formatNumberWithCommas(firstNumber)} ${formatOperatorSymbol(operator)}`
           : '';
 
       historyList.innerHTML = '';
-      history.slice(0, 10).forEach((item) => {
+      history.slice(0, MAX_HISTORY_ITEMS).forEach((item) => {
         const li = document.createElement('li');
         li.textContent = item;
         historyList.appendChild(li);
       });
 
-      fitTextToWidth(display, 16, 32);
-      fitTextToWidth(formula, 12, 16);
+      resetTextFit(display, DISPLAY_FONT_MAX);
+      resetTextFit(formula, FORMULA_FONT_MAX);
+      fitTextToWidth(display, DISPLAY_FONT_MIN, DISPLAY_FONT_MAX);
+      fitTextToWidth(formula, FORMULA_FONT_MIN, FORMULA_FONT_MAX);
+
       historyList.querySelectorAll('li').forEach((item) => {
-        fitTextToWidth(item, 11, 14);
+        resetTextFit(item, HISTORY_FONT_MAX);
+        fitTextToWidth(item, HISTORY_FONT_MIN, HISTORY_FONT_MAX);
       });
     }
 
@@ -277,7 +332,7 @@
     }
 
     function handleNumber(value) {
-      if (currentInput === 'エラー') {
+      if (isErrorState()) {
         clearAll();
       }
 
@@ -299,7 +354,7 @@
     }
 
     function handleOperator(nextOperator) {
-      if (currentInput === 'エラー') {
+      if (isErrorState()) {
         clearAll();
         return;
       }
@@ -331,21 +386,19 @@
         result = left * right;
       } else if (operator === '/') {
         if (right === 0) {
-          firstNumber = '';
-          operator = '';
-          currentInput = 'エラー';
-          isNewInput = true;
+          resetAfterError();
           render();
           return;
         }
         result = left / right;
       }
 
-      const symbol = operator === '*' ? '×' : operator === '/' ? '÷' : operator === '+' ? '＋' : '－';
-      const expression = `${firstNumber} ${symbol} ${currentInput}`;
+      const leftText = formatNumberWithCommas(firstNumber);
+      const rightText = formatNumberWithCommas(currentInput);
       currentInput = normalizeResult(result);
-      history.unshift(`${expression} = ${currentInput}`);
-      history = history.slice(0, 10);
+      const resultText = formatNumberWithCommas(currentInput);
+      history.unshift(`${leftText} ${formatOperatorSymbol(operator)} ${rightText} = ${resultText}`);
+      history = history.slice(0, MAX_HISTORY_ITEMS);
       firstNumber = '';
       operator = '';
       isNewInput = true;
