@@ -6,25 +6,26 @@
   <title>Calculator</title>
   <style>
     :root {
-      --bg: #ffffff;
-      --panel: #ffffff;
+      --bg: #1d1d1d;
+      --panel: #2a2a2a;
       --panel-border: #000000;
-      --display-bg: #ffffff;
+      --display-bg: #101010;
       --display-border: #000000;
-      --text: #000000;
-      --muted: #111111;
-      --digit-bg: #ffffff;
-      --digit-hover: #f1f1f1;
-      --operator-bg: #ffffff;
-      --operator-hover: #f1f1f1;
+      --text: #ffffff;
+      --muted: #d0d0d0;
+      --digit-bg: #3a3a3a;
+      --digit-hover: #4a4a4a;
+      --operator-bg: #2f2f2f;
+      --operator-hover: #454545;
       --equals-bg: #000000;
-      --equals-hover: #1a1a1a;
+      --equals-hover: #2a2a2a;
       --equals-text: #ffffff;
-      --clear-bg: #ffffff;
-      --clear-hover: #f1f1f1;
-      --history-bg: #ffffff;
+      --clear-bg: #343434;
+      --clear-hover: #4a4a4a;
+      --history-bg: #101010;
       --history-border: #000000;
-      --shadow: rgba(0, 0, 0, 0.2);
+      --history-item-bg: #2b2b2b;
+      --shadow: rgba(0, 0, 0, 0.45);
     }
 
     * {
@@ -36,18 +37,25 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%);
+      background: linear-gradient(180deg, #2b2b2b 0%, var(--bg) 100%);
       color: var(--text);
       font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
     }
 
     .calculator {
-      width: min(360px, calc(100vw - 24px));
+      width: min(760px, calc(100vw - 24px));
       background: var(--panel);
       border: 2px solid var(--panel-border);
       border-radius: 14px;
       box-shadow: 0 16px 36px var(--shadow);
       padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      grid-template-areas:
+        "display history"
+        "keypad history";
+      column-gap: 12px;
+      align-items: start;
     }
 
     .display {
@@ -62,15 +70,18 @@
       justify-content: center;
     }
 
+    .display {
+      grid-area: display;
+    }
+
     .formula {
       min-height: 1.3em;
       font-size: 0.95rem;
       color: var(--muted);
       text-align: right;
-      overflow-wrap: anywhere;
-      white-space: nowrap;
       overflow-x: auto;
       overflow-y: hidden;
+      white-space: nowrap;
     }
 
     .result {
@@ -88,6 +99,10 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
+    }
+
+    .keypad {
+      grid-area: keypad;
     }
 
     button {
@@ -123,6 +138,14 @@
       background: var(--operator-hover);
     }
 
+    .sign {
+      background: var(--operator-bg);
+    }
+
+    .sign:hover {
+      background: var(--operator-hover);
+    }
+
     .equals {
       background: var(--equals-bg);
       color: var(--equals-text);
@@ -140,10 +163,6 @@
       background: var(--clear-hover);
     }
 
-    .span-2 {
-      grid-column: span 2;
-    }
-
     .history {
       margin-top: 12px;
       background: var(--history-bg);
@@ -151,6 +170,15 @@
       border-radius: 10px;
       padding: 10px 12px;
       min-height: 220px;
+    }
+
+    .history {
+      grid-area: history;
+      margin-top: 0;
+      height: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
     .history h2 {
@@ -172,13 +200,23 @@
       padding-right: 2px;
     }
 
+    .history-list {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+    }
+
     .history-list li {
       padding: 6px 8px;
       border-radius: 8px;
-      background: #ffffff;
+      background: var(--history-item-bg);
       white-space: nowrap;
       overflow-x: auto;
       overflow-y: hidden;
+    }
+
+    .span-2 {
+      grid-column: span 2;
     }
 
     .hint {
@@ -197,7 +235,8 @@
     </section>
 
     <section class="keypad" aria-label="キー">
-      <button class="clear span-2" onclick="clearAll()">C</button>
+      <button class="clear" onclick="clearAll()">C</button>
+      <button class="sign" onclick="toggleSign()">±</button>
       <button class="operator" onclick="handleOperator('/')">÷</button>
       <button class="operator" onclick="handleOperator('*')">×</button>
 
@@ -343,8 +382,11 @@
         if (value === '.' && currentInput.includes('.')) {
           return;
         }
+
         if (currentInput === '0' && value !== '.') {
           currentInput = value;
+        } else if (currentInput === '-0' && value !== '.') {
+          currentInput = `-${value}`;
         } else {
           currentInput += value;
         }
@@ -366,6 +408,18 @@
       firstNumber = currentInput;
       operator = nextOperator;
       isNewInput = true;
+      render();
+    }
+
+    function toggleSign() {
+      if (isErrorState()) {
+        clearAll();
+        return;
+      }
+
+      currentInput = currentInput.startsWith('-')
+        ? currentInput.slice(1)
+        : `-${currentInput}`;
       render();
     }
 
@@ -397,8 +451,10 @@
       const rightText = formatNumberWithCommas(currentInput);
       currentInput = normalizeResult(result);
       const resultText = formatNumberWithCommas(currentInput);
+
       history.unshift(`${leftText} ${formatOperatorSymbol(operator)} ${rightText} = ${resultText}`);
       history = history.slice(0, MAX_HISTORY_ITEMS);
+
       firstNumber = '';
       operator = '';
       isNewInput = true;
