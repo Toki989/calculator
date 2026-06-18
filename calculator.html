@@ -68,9 +68,6 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-    }
-
-    .display {
       grid-area: display;
     }
 
@@ -99,9 +96,6 @@
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
-    }
-
-    .keypad {
       grid-area: keypad;
     }
 
@@ -164,21 +158,15 @@
     }
 
     .history {
-      margin-top: 12px;
       background: var(--history-bg);
       border: 2px solid var(--history-border);
       border-radius: 10px;
       padding: 10px 12px;
-      min-height: 220px;
-    }
-
-    .history {
-      grid-area: history;
-      margin-top: 0;
-      height: 100%;
       min-height: 100%;
+      grid-area: history;
       display: flex;
       flex-direction: column;
+      margin-top: 0;
     }
 
     .history h2 {
@@ -193,17 +181,12 @@
       display: grid;
       gap: 6px;
       font-size: 0.9rem;
-      min-height: 138px;
-      max-height: 160px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 2px;
-    }
-
-    .history-list {
       flex: 1;
       min-height: 0;
       max-height: none;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 2px;
     }
 
     .history-list li {
@@ -235,7 +218,7 @@
     </section>
 
     <section class="keypad" aria-label="キー">
-      <button class="clear" onclick="clearAll()">C</button>
+      <button class="clear" onclick="clearAll()">AC</button>
       <button class="sign" onclick="toggleSign()">±</button>
       <button class="operator" onclick="handleOperator('/')">÷</button>
       <button class="operator" onclick="handleOperator('*')">×</button>
@@ -257,7 +240,7 @@
 
       <button class="digit span-2" onclick="handleNumber('0')">0</button>
       <button class="digit" onclick="handleNumber('.')">.</button>
-      <button class="clear" onclick="clearAll()">AC</button>
+      <button class="clear" onclick="clearAll()">C</button>
     </section>
 
     <section class="history" aria-label="計算履歴">
@@ -322,6 +305,23 @@
       return fractionPart !== undefined ? `${head}.${fractionPart}` : head;
     }
 
+    function buildFormulaText() {
+      if (firstNumber === '') {
+        return '';
+      }
+
+      if (!operator) {
+        return formatNumberWithCommas(firstNumber);
+      }
+
+      const rightSide = isNewInput ? '' : formatNumberWithCommas(currentInput);
+      return `${formatNumberWithCommas(firstNumber)} ${formatOperatorSymbol(operator)} ${rightSide}`;
+    }
+
+    function buildHistoryEntry(leftValue, op, rightValue, resultValue) {
+      return `${formatNumberWithCommas(leftValue)} ${formatOperatorSymbol(op)} ${formatNumberWithCommas(rightValue)} = ${formatNumberWithCommas(resultValue)}`;
+    }
+
     function isErrorState() {
       return currentInput === 'エラー';
     }
@@ -335,14 +335,11 @@
 
     function render() {
       display.textContent = formatNumberWithCommas(currentInput);
-      formula.textContent = firstNumber !== '' && operator
-        ? `${formatNumberWithCommas(firstNumber)} ${formatOperatorSymbol(operator)} ${isNewInput ? '' : formatNumberWithCommas(currentInput)}`
-        : firstNumber !== ''
-          ? `${formatNumberWithCommas(firstNumber)} ${formatOperatorSymbol(operator)}`
-          : '';
+      formula.textContent = buildFormulaText();
 
       historyList.innerHTML = '';
-      history.slice(0, MAX_HISTORY_ITEMS).forEach((item) => {
+      const visibleHistory = history.slice(0, MAX_HISTORY_ITEMS);
+      visibleHistory.forEach((item) => {
         const li = document.createElement('li');
         li.textContent = item;
         historyList.appendChild(li);
@@ -430,6 +427,8 @@
 
       const left = parseFloat(firstNumber);
       const right = parseFloat(currentInput);
+      const sourceLeft = firstNumber;
+      const sourceRight = currentInput;
       let result = 0;
 
       if (operator === '+') {
@@ -447,12 +446,8 @@
         result = left / right;
       }
 
-      const leftText = formatNumberWithCommas(firstNumber);
-      const rightText = formatNumberWithCommas(currentInput);
       currentInput = normalizeResult(result);
-      const resultText = formatNumberWithCommas(currentInput);
-
-      history.unshift(`${leftText} ${formatOperatorSymbol(operator)} ${rightText} = ${resultText}`);
+      history.unshift(buildHistoryEntry(sourceLeft, operator, sourceRight, currentInput));
       history = history.slice(0, MAX_HISTORY_ITEMS);
 
       firstNumber = '';
